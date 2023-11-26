@@ -5,6 +5,7 @@ plugins {
     id ("kotlin-android")
     id ("kotlin-kapt")
     id ("dagger.hilt.android.plugin")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -81,4 +82,6 @@ dependencies {
     add("kapt", "androidx.hilt:hilt-compiler:1.0.0")
     implementation ("androidx.activity:activity-ktx:1.8.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+    implementation ("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
 }

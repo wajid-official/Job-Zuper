@@ -3,6 +3,7 @@ package zuper.dev.android.dashboard.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -27,22 +32,59 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ChainStyle
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
+import com.google.gson.Gson
 import zuper.dev.android.dashboard.R
 import zuper.dev.android.dashboard.components.Header
 import zuper.dev.android.dashboard.components.HorizontalView
 import zuper.dev.android.dashboard.components.ProgressView
+import zuper.dev.android.dashboard.data.model.InvoiceModel
+import zuper.dev.android.dashboard.data.model.JobModel
+import zuper.dev.android.dashboard.navigation.PlaceHolder
+import zuper.dev.android.dashboard.navigation.Screens
+import zuper.dev.android.dashboard.snippet.getRoute
+import zuper.dev.android.dashboard.snippet.getTodayDate
+import zuper.dev.android.dashboard.state.DashboardState
 import zuper.dev.android.dashboard.ui.theme.BgGrey
 import zuper.dev.android.dashboard.ui.theme.TextGrey
 import zuper.dev.android.dashboard.ui.theme.ViewGrey
+import zuper.dev.android.dashboard.viewModel.DashboardViewModel
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Preview(showBackground = true)
 @Composable
-fun DashboardPage() {
+fun DashboardPage(navController: NavHostController) {
+
+    val dashboardViewModel: DashboardViewModel = hiltViewModel()
+    val jobState = remember { mutableStateOf<JobModel?>(null) }
+    val invoiceState = remember { mutableStateOf<InvoiceModel?>(null) }
+
+    LaunchedEffect(key1 = Unit, block = {
+        dashboardViewModel.dashboardFlow.collect { state ->
+            when (state) {
+                is DashboardState.UpdateJobs -> {
+                    jobState.value = state.jobModel
+                }
+
+                is DashboardState.UpdateInvoice -> {
+                    invoiceState.value = state.invoiceModel
+                }
+            }
+        }
+    })
+
+    LaunchedEffect(key1 = Unit, block = {
+        dashboardViewModel.fetchJobs()
+        dashboardViewModel.fetchInvoice()
+    })
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize(),
         topBar = {
-            Header()
+            Header(navController, "Dashboard")
         },
         content = {
             ConstraintLayout(
@@ -65,7 +107,7 @@ fun DashboardPage() {
 
                 LazyColumn(
                     modifier = Modifier
-                        .padding(vertical = 12.dp)
+                        .padding(bottom = 12.dp)
                         .fillMaxWidth()
                         .constrainAs(contentLayout) {
                             centerHorizontallyTo(parent)
@@ -80,11 +122,16 @@ fun DashboardPage() {
                     }
 
                     item {
-                        JobSection()
+                        JobSection(
+                            jobState,
+                            navController
+                        )
                     }
 
                     item {
-                        InvoiceSection()
+                        InvoiceSection(
+                            invoiceState
+                        )
                     }
                 }
             }
@@ -96,7 +143,7 @@ fun DashboardPage() {
 fun ProfileSection() {
     ConstraintLayout(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
             .fillMaxWidth()
             .background(Color.White)
             .border(
@@ -123,7 +170,7 @@ fun ProfileSection() {
                     end.linkTo(parent.end)
                 })
 
-        Text(text = "Hello, Henry sdfs d fds fsd sfd sd ssdf dfsd ",
+        Text(text = stringResource(id = R.string.greetings),
             style = TextStyle(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -140,7 +187,7 @@ fun ProfileSection() {
                 }
         )
 
-        Text(text = "Hello, Henry sdfs d fds fsd sfd sd ssdf dfsd ",
+        Text(text = getTodayDate(),
             style = TextStyle(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -150,7 +197,7 @@ fun ProfileSection() {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .padding(end = 16.dp, top = 8.dp)
+                .padding(end = 16.dp, top = 6.dp)
                 .constrainAs(tvDate) {
                     top.linkTo(tvGreetings.bottom)
                     start.linkTo(parent.start)
@@ -161,7 +208,7 @@ fun ProfileSection() {
 
         constrain(
             createVerticalChain(tvGreetings, tvDate, chainStyle = ChainStyle.Packed)
-        ){
+        ) {
             top.linkTo(parent.top)
             bottom.linkTo(parent.bottom)
         }
@@ -169,10 +216,10 @@ fun ProfileSection() {
 }
 
 @Composable
-fun JobSection(){
+fun JobSection(jobState: MutableState<JobModel?>, navController: NavHostController) {
     ConstraintLayout(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
             .fillMaxWidth()
             .background(Color.White)
             .border(
@@ -180,8 +227,19 @@ fun JobSection(){
                 color = ViewGrey,
                 shape = RoundedCornerShape(8.dp)
             )
+            .clickable {
+                navController.navigate(
+                    Screens.JOB.getRoute(
+                        URLEncoder.encode(
+                            Gson().toJson(jobState.value),
+                            StandardCharsets.UTF_8.name()
+                        ),
+                        PlaceHolder.JOB_DATA
+                    )
+                )
+            }
             .padding(vertical = 16.dp)
-    ){
+    ) {
         val (tvLabel, vHorizontal, tvTotal, tvStat, progressSection) = createRefs()
 
         Text(text = stringResource(id = R.string.label_job_stats),
@@ -200,13 +258,13 @@ fun JobSection(){
         HorizontalView(
             modifier = Modifier
                 .padding(vertical = 16.dp)
-                .constrainAs(vHorizontal){
+                .constrainAs(vHorizontal) {
                     centerHorizontallyTo(parent)
                     top.linkTo(tvLabel.bottom)
                 }
         )
 
-        Text(text = "60 Jobs",
+        Text(text = "${jobState.value?.total} Jobs",
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -220,7 +278,7 @@ fun JobSection(){
                 .padding(start = 16.dp)
         )
 
-        Text(text = "25 of 60 completed",
+        Text(text = "${jobState.value?.completed} of ${jobState.value?.total} completed",
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -237,20 +295,22 @@ fun JobSection(){
         ProgressView(
             modifier = Modifier
                 .padding(top = 12.dp, start = 16.dp, end = 16.dp)
-                .constrainAs(progressSection){
+                .constrainAs(progressSection) {
                     centerHorizontallyTo(parent)
                     top.linkTo(tvTotal.bottom)
-                }
+                },
+            jobState.value?.total,
+            jobState.value?.jobMap,
+            true
         )
-
     }
 }
 
 @Composable
-fun InvoiceSection(){
+fun InvoiceSection(invoiceState: MutableState<InvoiceModel?>) {
     ConstraintLayout(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
             .fillMaxWidth()
             .background(Color.White)
             .border(
@@ -259,7 +319,7 @@ fun InvoiceSection(){
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(vertical = 16.dp)
-    ){
+    ) {
         val (tvLabel, vHorizontal, tvTotal, tvStat, progressSection) = createRefs()
 
         Text(text = stringResource(id = R.string.label_invoice_stats),
@@ -278,13 +338,13 @@ fun InvoiceSection(){
         HorizontalView(
             modifier = Modifier
                 .padding(vertical = 16.dp)
-                .constrainAs(vHorizontal){
+                .constrainAs(vHorizontal) {
                     centerHorizontallyTo(parent)
                     top.linkTo(tvLabel.bottom)
                 }
         )
 
-        Text(text = "60 Jobs",
+        Text(text = "Total value ($${invoiceState.value?.total})",
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -298,7 +358,7 @@ fun InvoiceSection(){
                 .padding(start = 16.dp)
         )
 
-        Text(text = "25 of 60 completed",
+        Text(text = "$${invoiceState.value?.collected} collected",
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -315,10 +375,13 @@ fun InvoiceSection(){
         ProgressView(
             modifier = Modifier
                 .padding(top = 12.dp, start = 16.dp, end = 16.dp)
-                .constrainAs(progressSection){
+                .constrainAs(progressSection) {
                     centerHorizontallyTo(parent)
                     top.linkTo(tvTotal.bottom)
-                }
+                },
+            total = invoiceState.value?.total,
+            jobMap = invoiceState.value?.invoiceMap,
+            false
         )
 
     }

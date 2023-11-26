@@ -16,21 +16,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import zuper.dev.android.dashboard.data.model.InvoiceStatus
+import zuper.dev.android.dashboard.data.model.JobStatus
 import zuper.dev.android.dashboard.ui.theme.TextGrey
 
 @Preview(showBackground = true)
 @Composable
-fun StatusView() {
+fun StatusView(job: Map.Entry<Any?, Pair<Int, MutableList<*>?>>, isJob: Boolean) {
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(12.dp)
-                .background(Color.Red, shape = RoundedCornerShape(2.dp))
+                .background(
+                    if (isJob) {
+                        getJobColor(job.key as JobStatus)
+                    } else {
+                        getInvoiceColor(job.key as InvoiceStatus)
+                    },
+                    shape = RoundedCornerShape(2.dp))
         )
 
-        Text(text = "Yet to start",
+        Text(
+            text = if (isJob) {
+                "${getJobStatusName(job.key as JobStatus)} (${job.value.first})"
+            } else {
+                "${getInvoiceStatusName(job.key as InvoiceStatus)} ($${job.value.first})"
+            },
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -40,5 +53,24 @@ fun StatusView() {
                 .padding(start = 8.dp)
         )
 
+    }
+}
+
+fun getJobStatusName(type: JobStatus): String {
+    return when (type) {
+        JobStatus.YetToStart -> "Yet to start"
+        JobStatus.InProgress -> "In-Progress"
+        JobStatus.Canceled -> "Cancelled"
+        JobStatus.Completed -> "Completed"
+        JobStatus.Incomplete -> "In-Complete"
+    }
+}
+
+fun getInvoiceStatusName(type: InvoiceStatus): String {
+    return when (type) {
+        InvoiceStatus.Draft -> "Draft"
+        InvoiceStatus.Pending -> "Pending"
+        InvoiceStatus.Paid -> "Paid"
+        InvoiceStatus.BadDebt -> "Bad Debt"
     }
 }

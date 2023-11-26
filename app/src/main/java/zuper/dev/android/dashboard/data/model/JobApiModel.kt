@@ -1,5 +1,8 @@
 package zuper.dev.android.dashboard.data.model
 
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
+
 
 /**
  * A simple API model representing a Job
